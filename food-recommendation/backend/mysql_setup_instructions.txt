@@ -1,0 +1,39 @@
+MySQL手动安装指南：
+
+1. 下载MySQL Installer:
+   - 如果自动下载未启动，请手动访问：
+   https://dev.mysql.com/downloads/installer/
+
+2. 安装步骤：
+   - 运行安装程序
+   - 选择"Developer Default"安装类型
+   - 完成所有必要组件的安装
+
+3. 配置MySQL服务器：
+   - 设置root用户密码（请务必记住）
+   - 配置服务名称为"MySQL80"
+   - 确保勾选"Start the MySQL Server at System Startup"
+
+4. 验证安装：
+   - 打开命令提示符，运行：
+     mysql -u root -p
+   - 输入密码后应进入MySQL命令行
+
+5. 创建应用数据库：
+   - 执行以下SQL命令：
+     CREATE DATABASE food_recommendation;
+     CREATE USER 'foodapp'@'localhost' IDENTIFIED BY 'your_password';
+     GRANT ALL PRIVILEGES ON food_recommendation.* TO 'foodapp'@'localhost';
+     FLUSH PRIVILEGES;
+
+6. 导入初始数据：
+   - 使用以下命令导入SQL文件：
+     mysql -u root -p food_recommendation < AI个性化食物推荐数据库.sql
+
+安装完成后，请修改server.js中的数据库配置：
+const dbConfig = {
+  host: 'localhost',
+  user: 'foodapp', // 或使用root用户
+  password: 'your_password', // 替换为实际密码
+  database: 'food_recommendation'
+};

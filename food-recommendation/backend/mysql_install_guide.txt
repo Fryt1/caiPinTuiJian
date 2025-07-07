@@ -1,0 +1,23 @@
+MySQL安装指南：
+
+1. 下载MySQL Installer (已自动开始下载安装程序)
+2. 运行安装向导，选择"Developer Default"安装类型
+3. 安装过程中会提示设置root密码，请记住这个密码
+4. 安装完成后，确保MySQL服务已启动
+5. 配置步骤：
+   - 打开MySQL Command Line Client
+   - 输入root密码登录
+   - 执行以下命令创建数据库：
+     CREATE DATABASE food_recommendation;
+   - 执行以下命令创建用户并授权：
+     CREATE USER 'foodapp'@'localhost' IDENTIFIED BY 'your_password';
+     GRANT ALL PRIVILEGES ON food_recommendation.* TO 'foodapp'@'localhost';
+     FLUSH PRIVILEGES;
+
+安装完成后，请修改backend/server.js中的数据库配置：
+const dbConfig = {
+  host: 'localhost',
+  user: 'foodapp', // 或使用root用户
+  password: 'your_password', // 替换为实际密码
+  database: 'food_recommendation'
+};
