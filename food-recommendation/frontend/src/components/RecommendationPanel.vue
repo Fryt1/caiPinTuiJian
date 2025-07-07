@@ -177,22 +177,30 @@
       <div v-if="emptyMessage" class="empty">
         {{ emptyMessage }}
       </div>
-      <FoodCard 
-        v-else
-        v-for="food in filteredFoods" 
-        :key="food.id"
-        :food="food"
-      />
+      <div v-else>
+        <!-- 推荐结果 -->
+        <div class="food-grid">
+          <FoodCard 
+            v-for="food in filteredFoods" 
+            :key="food.id"
+            :food="food"
+          />
+        </div>
+        
+        <!-- 调试面板 -->
+        <DebugPanel :foods="filteredFoods" />
+      </div>
     </div>
   </div>
 </template>
 
 <script>
 import FoodCard from './FoodCard.vue'
+import DebugPanel from './DebugPanel.vue'
 import recommendationService from '../services/recommendationService'
 
 export default {
-  components: { FoodCard },
+  components: { FoodCard, DebugPanel },
   data() {
     return {
       // 多选健康目标
@@ -350,13 +358,22 @@ export default {
           allergies: this.allergies.trim() || '无'
         };
         
-        console.log('请求参数:', requestFilters);
+        console.log('🚀 前端发送请求参数:', requestFilters);
         
-        this.foods = await recommendationService.getRecommendations(userId, requestFilters);
-        console.log('获取到的推荐:', this.foods);
+        const response = await recommendationService.getRecommendations(userId, requestFilters);
+        this.foods = response;
+        
+        console.log('🎯 前端接收到的推荐数据:', this.foods);
+        console.log('📊 推荐食物数量:', this.foods.length);
+        
+        // 详细日志每个食物的信息
+        this.foods.forEach((food, index) => {
+          console.log(`${index + 1}. ${food.name} - 热量:${food.calories}kcal, 蛋白质:${food.protein}g, 图片:${food.image}`);
+        });
+        
       } catch (error) {
         this.error = '获取推荐失败，请稍后重试';
-        console.error('推荐失败:', error);
+        console.error('❌ 前端获取推荐失败:', error);
       } finally {
         this.isLoading = false;
       }
@@ -513,9 +530,14 @@ export default {
 }
 
 .recommendations {
+  margin-top: 20px;
+}
+
+.food-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+  margin-bottom: 30px;
 }
 
 .loading {
@@ -577,7 +599,7 @@ export default {
     align-items: stretch;
   }
   
-  .recommendations {
+  .food-grid {
     grid-template-columns: 1fr;
   }
 }

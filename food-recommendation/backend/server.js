@@ -281,6 +281,7 @@ ${specificInstructions}
 - 如果用户有过敏信息，严格避免相关食物
 - 营养搭配要均衡，包含多种食物类别
 - 考虑食物的协同作用和营养互补
+- **重要**：推荐的食物名称必须与数据库中的name字段完全一致
 
 请只返回JSON格式，不要有其他文字。请推荐数据库中真实存在的食物：
 {
@@ -292,7 +293,10 @@ ${specificInstructions}
   ]
 }
 
-可选择的食物包括：${allFoods.map(f => f.name).join('、')}`;
+数据库中可选择的食物包括：
+${allFoods.map(f => `"${f.name}"`).join('、')}
+
+请确保推荐的每个食物名称都在上述列表中，名称必须完全匹配，包括标点符号。`;
 
       return prompt;
     };
@@ -366,12 +370,38 @@ ${specificInstructions}
     // 6. 根据食物名称查找对应的完整信息
     let foods = [];
     if (recommendedNames.length > 0) {
+      console.log('查找AI推荐的食物:', recommendedNames);
+      
+      // 首先尝试精确匹配
       const namePlaceholders = recommendedNames.map(() => '?').join(',');
-      const [aiRecommendedFoods] = await connection.execute(
+      const [exactMatches] = await connection.execute(
         `SELECT * FROM foods WHERE name IN (${namePlaceholders})`,
         recommendedNames
       );
-      foods = aiRecommendedFoods;
+      
+      foods = [...exactMatches];
+      const foundNames = exactMatches.map(f => f.name);
+      const notFoundNames = recommendedNames.filter(name => !foundNames.includes(name));
+      
+      console.log('精确匹配找到:', foundNames);
+      console.log('未找到的食物:', notFoundNames);
+      
+      // 对于未找到的食物，尝试模糊匹配
+      if (notFoundNames.length > 0) {
+        for (const searchName of notFoundNames) {
+          const [fuzzyMatches] = await connection.execute(
+            `SELECT * FROM foods WHERE name LIKE ? LIMIT 1`,
+            [`%${searchName}%`]
+          );
+          
+          if (fuzzyMatches.length > 0) {
+            foods.push(fuzzyMatches[0]);
+            console.log(`模糊匹配: "${searchName}" -> "${fuzzyMatches[0].name}"`);
+          } else {
+            console.log(`❌ 未找到匹配食物: "${searchName}"`);
+          }
+        }
+      }
     }
 
     // 7. 如果AI推荐的食物不足，补充默认推荐
@@ -461,23 +491,71 @@ function formatFoodResponse(food) {
     tags.push('vegetarian');
   }
   
-  // 构建完整的图片URL
+  // 构建完整的图片URL - 修复图片路径问题
   let imageUrl = food.image_url;
-  if (imageUrl && !imageUrl.startsWith('http')) {
+  if (!imageUrl) {
+    // 如果数据库中没有图片URL，根据食物名称构建默认图片路径
+    imageUrl = `/images/default.jpg`; // 默认图片
+    
+    // 尝试根据食物名称匹配图片文件
+    const foodName = food.name;
+    if (foodName) {
+      // 根据食物类别构建可能的图片路径
+      const categoryMap = {
+        '豆类及制品': '豆类及制品',
+        '谷类及制品': '谷类及制品', 
+        '海鲜类': '海鲜类',
+        '蔬菜类': '蔬菜类',
+        '水果类': '水果类'
+      };
+      
+      // 根据食物名称推断类别
+      let category = '其他';
+      if (foodName.includes('豆') || foodName.includes('腐')) {
+        category = '豆类及制品';
+      } else if (foodName.includes('米') || foodName.includes('面') || foodName.includes('麦') || foodName.includes('粥')) {
+        category = '谷类及制品';
+      } else if (foodName.includes('鱼') || foodName.includes('虾') || foodName.includes('蟹') || foodName.includes('贝')) {
+        category = '海鲜类';
+      } else if (foodName.includes('菜') || foodName.includes('瓜') || foodName.includes('萝卜') || foodName.includes('菇')) {
+        category = '蔬菜类';
+      } else if (foodName.includes('果') || foodName.includes('莓') || foodName.includes('桃') || foodName.includes('梨')) {
+        category = '水果类';
+      }
+      
+      imageUrl = `/images/${category}/${foodName}.jpeg`;
+    }
+  } else if (!imageUrl.startsWith('http')) {
     // 如果是相对路径，构建完整的服务器URL
     imageUrl = `http://localhost:3000${imageUrl}`;
   }
   
+  // 确保数值类型正确
+  const formatNumber = (value) => {
+    const num = parseFloat(value);
+    return isNaN(num) ? 0 : Number(num.toFixed(2));
+  };
+  
   return {
     id: food.id,
-    name: food.name,
-    calories: food.calories,
-    protein: food.protein,
-    carbs: food.carbohydrate,
-    fat: food.fat,
+    name: food.name || '未知食物',
+    calories: formatNumber(food.calories),
+    protein: formatNumber(food.protein),
+    carbs: formatNumber(food.carbohydrate),
+    fat: formatNumber(food.fat),
     image: imageUrl,
     tags: tags,
-    description: food.description
+    description: food.description || '',
+    // 添加调试信息
+    debug: {
+      originalData: {
+        calories: food.calories,
+        protein: food.protein,
+        carbohydrate: food.carbohydrate,
+        fat: food.fat,
+        image_url: food.image_url
+      }
+    }
   };
 }
 

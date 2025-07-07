@@ -1,6 +1,17 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'http://localhost:3000'
+// 动态获取后端地址，支持局域网访问
+const getAPIBaseURL = () => {
+  const hostname = window.location.hostname
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:3001'
+  } else {
+    // 局域网访问时使用相同的IP地址
+    return `http://${hostname}:3001`
+  }
+}
+
+const API_BASE_URL = getAPIBaseURL()
 
 export default {
   async getRecommendations(userId, filters = {}) {

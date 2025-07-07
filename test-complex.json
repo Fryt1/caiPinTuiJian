@@ -1,0 +1,8 @@
+{
+  "userId": "user123",
+  "filters": {
+    "healthGoals": ["减重", "增肌"],
+    "dietPreferences": ["高蛋白", "低糖"],
+    "allergies": "海鲜"
+  }
+}
