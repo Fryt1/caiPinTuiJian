@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: food-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 10086123
+      MYSQL_DATABASE: food_recommendation
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./food-recommendation/backend/database.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - food-network
+    restart: unless-stopped
+
+  # Node.js后端 (二选一)
+  backend-node:
+    build: ./food-recommendation/backend
+    container_name: food-backend-node
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=10086123
+      - DB_NAME=food_recommendation
+    depends_on:
+      - mysql
+    networks:
+      - food-network
+    restart: unless-stopped
+    volumes:
+      - ./images:/app/images:ro
+
+  # Java后端 (二选一，如果使用Java后端请注释掉Node.js后端)
+  # backend-java:
+  #   build: ./food-recommendation/backend-java
+  #   container_name: food-backend-java
+  #   ports:
+  #     - "3001:3001"
+  #   environment:
+  #     - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/food_recommendation?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
+  #     - SPRING_DATASOURCE_USERNAME=root
+  #     - SPRING_DATASOURCE_PASSWORD=10086123
+  #   depends_on:
+  #     - mysql
+  #   networks:
+  #     - food-network
+  #   restart: unless-stopped
+
+  # 前端
+  frontend:
+    build: ./food-recommendation/frontend
+    container_name: food-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend-node  # 如果使用Java后端，改为backend-java
+    networks:
+      - food-network
+    restart: unless-stopped
+
+  # Redis缓存 (可选)
+  redis:
+    image: redis:alpine
+    container_name: food-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - food-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  food-network:
+    driver: bridge

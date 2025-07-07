@@ -1,8 +1,0 @@
-{
-  "userId": "test-user-123",
-  "filters": {
-    "healthGoals": ["lose-weight"],
-    "dietPreferences": ["低脂", "只要蔬菜类"],
-    "allergies": "无"
-  }
-}
